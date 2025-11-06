@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AR 內嵌 YouTube</title>
+    <title>AR 本地影片 - 真 3D 整合</title>
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.2/dist/mindar-image-aframe.prod.js"></script>
     <style>
@@ -56,68 +56,6 @@
         #instructions.hide {
             display: none;
         }
-        /* YouTube 內嵌播放器 - 覆蓋在 AR 畫面中央 */
-        #youtubeContainer {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 85%;
-            max-width: 500px;
-            aspect-ratio: 16 / 9;
-            background: rgba(0,0,0,0.3);
-            border-radius: 15px;
-            padding: 10px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
-            display: none;
-            z-index: 998;
-            border: 3px solid rgba(255,105,180,0.8);
-        }
-        #youtubeContainer.show {
-            display: block;
-            animation: slideIn 0.5s ease-out;
-        }
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translate(-50%, -60%);
-            }
-            to {
-                opacity: 1;
-                transform: translate(-50%, -50%);
-            }
-        }
-        #youtubeContainer iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-            border-radius: 10px;
-        }
-        #closeYoutube {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            margin-top: calc(-42.5% - 50px);
-            width: 40px;
-            height: 40px;
-            background: rgba(255,255,255,0.95);
-            border-radius: 50%;
-            display: none;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            cursor: pointer;
-            z-index: 999;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-        }
-        #closeYoutube.show {
-            display: flex;
-        }
-        #closeYoutube:active {
-            transform: translate(-50%, -50%) scale(0.9);
-        }
         #status {
             position: fixed;
             bottom: 20px;
@@ -128,8 +66,34 @@
             padding: 12px 25px;
             border-radius: 20px;
             font-size: 14px;
-            z-index: 997;
-            text-align: center;
+            z-index: 998;
+        }
+        #controls {
+            position: fixed;
+            top: 80px;
+            right: 20px;
+            z-index: 998;
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #controls.show {
+            display: flex;
+        }
+        .control-btn {
+            width: 50px;
+            height: 50px;
+            background: rgba(255,105,180,0.9);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+        }
+        .control-btn:active {
+            transform: scale(0.9);
         }
     </style>
 </head>
@@ -144,129 +108,118 @@
     <!-- 使用說明 -->
     <div id="instructions">
         📷 將相機對準卡片圖片<br>
-        <small>辨識後點擊 AR 畫面播放</small>
+        <small>影片會自動播放</small>
     </div>
 
     <!-- 狀態顯示 -->
     <div id="status">等待掃描...</div>
 
-    <!-- YouTube 內嵌播放器容器 -->
-    <div id="youtubeContainer">
-        <iframe 
-            id="youtubeFrame"
-            src=""
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-            allowfullscreen>
-        </iframe>
+    <!-- 控制按鈕 -->
+    <div id="controls">
+        <div class="control-btn" id="playPauseBtn" title="播放/暫停">
+            ▶️
+        </div>
+        <div class="control-btn" id="muteBtn" title="靜音/取消靜音">
+            🔊
+        </div>
     </div>
-
-    <!-- 關閉按鈕 -->
-    <div id="closeYoutube">✕</div>
 
     <!-- AR 場景 -->
     <a-scene 
         mindar-image="imageTargetSrc: ./targets.mind; autoStart: true; uiLoading: no; uiError: no; uiScanning: no;"
         color-space="sRGB" 
-        renderer="colorManagement: true; antialias: true; alpha: true;" 
+        renderer="colorManagement: true; antialias: true;" 
         vr-mode-ui="enabled: false" 
         device-orientation-permission-ui="enabled: false"
         loading-screen="enabled: false">
         
+        <a-assets timeout="30000">
+            <!-- 
+            ⚠️ 重要：將你的影片檔案命名為 video.mp4 並上傳到與此 HTML 相同的目錄
+            或者修改下方的 src 指向你的影片檔案路徑
+            -->
+            <video 
+                id="video" 
+                src="./video.mp4"
+                preload="auto"
+                crossorigin="anonymous"
+                playsinline
+                webkit-playsinline
+                loop>
+            </video>
+        </a-assets>
+
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
 
         <!-- AR 內容 -->
         <a-entity id="target" mindar-image-target="targetIndex: 0">
             
-            <!-- 可點擊的播放區域 -->
-            <a-plane
-                id="clickArea"
-                position="0 0 0"
-                width="1.6"
+            <!-- 影片播放器 -->
+            <a-video 
+                id="videoPlayer"
+                src="#video" 
+                position="0 0 0" 
+                rotation="0 0 0"
+                width="1.6" 
                 height="0.9"
-                opacity="0"
-                class="clickable">
-            </a-plane>
+                opacity="0">
+            </a-video>
 
-            <!-- 播放圖示背景 -->
-            <a-circle
-                id="playCircle"
-                position="0 0 0.01"
-                radius="0.35"
-                color="#FF1493"
-                opacity="0.85">
-            </a-circle>
-
-            <!-- 播放三角形 -->
-            <a-triangle
-                position="0 0 0.02"
-                vertex-a="0 0.18 0"
-                vertex-b="-0.15 -0.09 0"
-                vertex-c="0.15 -0.09 0"
-                rotation="0 0 90"
-                color="#FFFFFF">
-            </a-triangle>
-
-            <!-- YouTube 文字 -->
+            <!-- 載入提示 -->
             <a-text 
-                value="YouTube" 
-                position="0 -0.5 0.01" 
-                align="center" 
-                color="#FF0000"
-                width="1.5">
-            </a-text>
-
-            <!-- 點擊提示 -->
-            <a-text 
-                id="tapHint"
-                value="點擊播放" 
-                position="0 0.5 0.01" 
+                id="loadingHint"
+                value="影片載入中..." 
+                position="0 0 0.01" 
                 align="center" 
                 color="#FFFF00"
-                width="1.2">
+                width="1.5">
             </a-text>
 
             <!-- 裝飾愛心 -->
             <a-sphere 
-                position="-0.6 0.4 0.1" 
+                position="-0.85 0.5 0" 
                 radius="0.05" 
                 color="#FF1493"
-                animation="property: position; to: -0.6 0.5 0.1; dur: 1200; loop: true; dir: alternate; easing: easeInOutQuad">
+                animation="property: position; to: -0.85 0.6 0; dur: 1200; loop: true; dir: alternate; easing: easeInOutQuad">
             </a-sphere>
             <a-sphere 
-                position="0.6 0.4 0.1" 
+                position="0.85 0.5 0" 
                 radius="0.05" 
                 color="#FF69B4"
-                animation="property: position; to: 0.6 0.5 0.1; dur: 1200; loop: true; dir: alternate; easing: easeInOutQuad; delay: 600">
+                animation="property: position; to: 0.85 0.6 0; dur: 1200; loop: true; dir: alternate; easing: easeInOutQuad; delay: 600">
             </a-sphere>
+
+            <!-- 邊框 -->
+            <a-plane
+                position="0 0 -0.01"
+                width="1.7"
+                height="1.0"
+                color="#FF69B4"
+                opacity="0.3">
+            </a-plane>
 
         </a-entity>
 
     </a-scene>
 
     <script>
-        // ========================================
-        // 🎬 設定你的 YouTube 影片 ID
-        // ========================================
-        const YOUTUBE_ID = 'zgdGFIjNddg';  // ← 改這裡！
-        // ========================================
-
-        console.log('🎬 YouTube ID:', YOUTUBE_ID);
+        console.log('🎬 AR 本地影片播放器啟動');
 
         // 元素
         const loading = document.getElementById('loading');
         const instructions = document.getElementById('instructions');
         const status = document.getElementById('status');
-        const youtubeContainer = document.getElementById('youtubeContainer');
-        const youtubeFrame = document.getElementById('youtubeFrame');
-        const closeYoutube = document.getElementById('closeYoutube');
+        const controls = document.getElementById('controls');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const muteBtn = document.getElementById('muteBtn');
         const scene = document.querySelector('a-scene');
         const target = document.getElementById('target');
-        const clickArea = document.getElementById('clickArea');
-        const playCircle = document.getElementById('playCircle');
-        const tapHint = document.getElementById('tapHint');
+        const videoElement = document.getElementById('video');
+        const videoPlayer = document.getElementById('videoPlayer');
+        const loadingHint = document.getElementById('loadingHint');
 
         let isTargetFound = false;
-        let isYoutubePlaying = false;
+        let videoReady = false;
 
         // 場景載入完成
         scene.addEventListener('loaded', () => {
@@ -276,41 +229,47 @@
             }, 1000);
         });
 
+        // 影片事件
+        videoElement.addEventListener('loadeddata', () => {
+            console.log('✓ 影片載入完成');
+            videoReady = true;
+            loadingHint.setAttribute('visible', 'false');
+        });
+
+        videoElement.addEventListener('error', (e) => {
+            console.error('❌ 影片載入失敗:', e);
+            loadingHint.setAttribute('value', '❌ 找不到 video.mp4');
+            loadingHint.setAttribute('color', '#FF0000');
+            alert('找不到影片檔案！\n\n請確認：\n1. video.mp4 已上傳到 GitHub\n2. 檔名正確（小寫）\n3. 檔案格式正確');
+        });
+
+        videoElement.addEventListener('playing', () => {
+            console.log('▶ 影片播放中');
+            playPauseBtn.textContent = '⏸️';
+        });
+
+        videoElement.addEventListener('pause', () => {
+            console.log('⏸️ 影片已暫停');
+            playPauseBtn.textContent = '▶️';
+        });
+
         // 找到特徵圖
         target.addEventListener('targetFound', () => {
             console.log('✓ 找到特徵圖！');
             isTargetFound = true;
-            status.textContent = '✓ 辨識成功！點擊 AR 畫面播放';
+            status.textContent = '✓ 辨識成功！正在播放';
             status.style.background = 'rgba(0,200,0,0.8)';
             instructions.classList.add('hide');
+            controls.classList.add('show');
             
-            // 播放圖示脈動動畫
-            playCircle.setAttribute('animation', {
-                property: 'scale',
-                to: '1.3 1.3 1.3',
-                dur: 800,
-                loop: true,
-                dir: 'alternate',
-                easing: 'easeInOutQuad'
-            });
-
-            // 提示文字閃爍
-            tapHint.setAttribute('animation', {
-                property: 'opacity',
-                to: '0.3',
-                dur: 800,
-                loop: true,
-                dir: 'alternate'
-            });
-
-            // 如果還沒播放，3秒後自動播放
-            if (!isYoutubePlaying) {
-                setTimeout(() => {
-                    if (isTargetFound && !isYoutubePlaying) {
-                        console.log('⏰ 自動播放 YouTube');
-                        openYoutube();
-                    }
-                }, 3000);
+            // 顯示影片
+            if (videoReady) {
+                videoPlayer.setAttribute('opacity', '1');
+                videoElement.play().catch(err => {
+                    console.warn('自動播放被阻擋，需要用戶互動');
+                    loadingHint.setAttribute('visible', 'true');
+                    loadingHint.setAttribute('value', '👆 點擊播放按鈕');
+                });
             }
         });
 
@@ -318,97 +277,68 @@
         target.addEventListener('targetLost', () => {
             console.log('✗ 失去特徵圖');
             isTargetFound = false;
+            status.textContent = '等待掃描...';
+            status.style.background = 'rgba(0,0,0,0.8)';
+            instructions.classList.remove('hide');
             
-            if (!isYoutubePlaying) {
-                status.textContent = '等待掃描...';
-                status.style.background = 'rgba(0,0,0,0.8)';
-                instructions.classList.remove('hide');
-            }
-            
-            // 停止動畫
-            playCircle.removeAttribute('animation');
-            tapHint.removeAttribute('animation');
-            playCircle.setAttribute('scale', '1 1 1');
-            tapHint.setAttribute('opacity', '1');
+            // 暫停影片
+            videoElement.pause();
         });
 
-        // 點擊 AR 畫面播放
-        clickArea.addEventListener('click', () => {
-            if (isTargetFound && !isYoutubePlaying) {
-                console.log('👆 點擊播放');
-                openYoutube();
+        // 播放/暫停按鈕
+        playPauseBtn.addEventListener('click', () => {
+            if (!videoReady) {
+                alert('影片載入中，請稍候...');
+                return;
             }
-        });
 
-        // 開啟 YouTube
-        function openYoutube() {
-            console.log('▶ 開啟 YouTube 播放器');
-            isYoutubePlaying = true;
-            
-            // 構建 YouTube 嵌入網址（自動播放）
-            const youtubeUrl = `https://www.youtube.com/embed/${YOUTUBE_ID}?autoplay=1&rel=0&modestbranding=1`;
-            console.log('🔗 URL:', youtubeUrl);
-            
-            // 顯示 YouTube 播放器
-            youtubeFrame.src = youtubeUrl;
-            youtubeContainer.classList.add('show');
-            closeYoutube.classList.add('show');
-            
-            // 更新狀態
-            status.textContent = '🎬 正在播放 YouTube';
-            status.style.background = 'rgba(255,0,0,0.8)';
-            
-            // 隱藏 AR 播放圖示
-            playCircle.setAttribute('visible', 'false');
-            tapHint.setAttribute('visible', 'false');
-        }
-
-        // 關閉 YouTube
-        function closeYoutubePlayer() {
-            console.log('✕ 關閉 YouTube');
-            isYoutubePlaying = false;
-            
-            youtubeContainer.classList.remove('show');
-            closeYoutube.classList.remove('show');
-            youtubeFrame.src = '';
-            
-            // 顯示 AR 播放圖示
-            playCircle.setAttribute('visible', 'true');
-            tapHint.setAttribute('visible', 'true');
-            
-            if (isTargetFound) {
-                status.textContent = '✓ 辨識成功！點擊 AR 畫面播放';
-                status.style.background = 'rgba(0,200,0,0.8)';
+            if (videoElement.paused) {
+                videoElement.play();
+                videoPlayer.setAttribute('opacity', '1');
             } else {
-                status.textContent = '等待掃描...';
-                status.style.background = 'rgba(0,0,0,0.8)';
-                instructions.classList.remove('hide');
+                videoElement.pause();
             }
-        }
-
-        // 點擊關閉按鈕
-        closeYoutube.addEventListener('click', closeYoutubePlayer);
-
-        // 錯誤處理
-        window.addEventListener('error', (e) => {
-            console.error('錯誤:', e.message);
         });
 
-        // 檢查 targets.mind
+        // 靜音按鈕
+        muteBtn.addEventListener('click', () => {
+            videoElement.muted = !videoElement.muted;
+            muteBtn.textContent = videoElement.muted ? '🔇' : '🔊';
+            console.log('🔊 靜音:', videoElement.muted);
+        });
+
+        // 點擊影片也能播放/暫停
+        videoPlayer.addEventListener('click', () => {
+            playPauseBtn.click();
+        });
+
+        // 檢查檔案
         fetch('./targets.mind')
             .then(res => {
                 if (res.ok) {
-                    console.log('✓ targets.mind 檔案存在');
+                    console.log('✓ targets.mind 存在');
                 } else {
                     throw new Error('找不到檔案');
                 }
             })
             .catch(err => {
                 console.error('❌ targets.mind 不存在');
-                alert('找不到 targets.mind！\n請確認已上傳到 GitHub。');
+                alert('找不到 targets.mind！');
             });
 
-        // 顯示資訊
+        fetch('./video.mp4')
+            .then(res => {
+                if (res.ok) {
+                    console.log('✓ video.mp4 存在');
+                } else {
+                    throw new Error('找不到檔案');
+                }
+            })
+            .catch(err => {
+                console.error('❌ video.mp4 不存在');
+                console.warn('請上傳 video.mp4 檔案到 GitHub');
+            });
+
         console.log('========================================');
         console.log('📱 瀏覽器:', navigator.userAgent.split(' ').pop());
         console.log('📐 螢幕:', window.innerWidth + 'x' + window.innerHeight);
